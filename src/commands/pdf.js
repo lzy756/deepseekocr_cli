@@ -152,11 +152,16 @@ async function handlePdfOcr(pdfPath, options) {
         uploadBar = createProgressBar('Uploading');
       }
       
+      // Prepare options for async request
+      const asyncOptions = {
+        ...requestData,
+        onUploadProgress: uploadBar ? uploadProgressHandler(uploadBar) : undefined
+      };
+      
       // Start async task
       const taskResponse = await client.ocrPdfAsync(
         absolutePath,
-        requestData,
-        uploadBar ? uploadProgressHandler(uploadBar) : undefined
+        asyncOptions
       );
       
       if (uploadBar) {
@@ -190,10 +195,10 @@ async function handlePdfOcr(pdfPath, options) {
       // Wait for task completion
       const completedTask = await client.waitForTask(
         taskId,
-        taskBar ? taskProgressHandler(taskBar) : undefined,
         {
-          pollInterval: config.defaults.pollInterval,
-          pollTimeout: config.defaults.pollTimeout
+          initialDelay: config.defaults.pollInterval,
+          timeout: config.defaults.pollTimeout,
+          onProgress: taskBar ? taskProgressHandler(taskBar) : undefined
         }
       );
       
@@ -211,7 +216,8 @@ async function handlePdfOcr(pdfPath, options) {
       }
       
       // Download result
-      result = await client.downloadTaskResult(taskId);
+      const resultBuffer = await client.downloadTaskResult(taskId);
+      result = { data: resultBuffer };
       
     } else {
       // Synchronous processing
@@ -220,11 +226,17 @@ async function handlePdfOcr(pdfPath, options) {
         progressBar = createProgressBar('Uploading and processing');
       }
       
-      result = await client.ocrPdfSync(
+      // Prepare options for sync request
+      const syncOptions = {
+        ...requestData,
+        onUploadProgress: progressBar ? uploadProgressHandler(progressBar) : undefined
+      };
+      
+      const resultBuffer = await client.ocrPdfSync(
         absolutePath,
-        requestData,
-        progressBar ? uploadProgressHandler(progressBar) : undefined
+        syncOptions
       );
+      result = { data: resultBuffer };
       
       if (progressBar) {
         progressBar.stop();
@@ -277,6 +289,16 @@ async function handlePdfOcr(pdfPath, options) {
       const endTime = Date.now();
       const processingTime = ((endTime - startTime) / 1000).toFixed(2);
       
+      // Count total files from contents object
+      let fileCount = 0;
+      if (contents) {
+        if (contents.markdown) fileCount++;
+        if (contents.original) fileCount++;
+        if (contents.metadata) fileCount++;
+        if (contents.visualizationPdf) fileCount++;
+        fileCount += (contents.images || []).length;
+      }
+      
       // Output results
       if (jsonOutput) {
         console.log(JSON.stringify({
@@ -299,15 +321,19 @@ async function handlePdfOcr(pdfPath, options) {
           'Processing Time': `${processingTime}s`,
           'ZIP File': zipPath,
           'Extracted Directory': extractedDir || '(not extracted)',
-          'Result Files': contents.length
+          'Result Files': fileCount
         });
         
-        if (contents.length > 0) {
+        if (contents && fileCount > 0) {
           console.log();
           printInfo('Contents:');
-          contents.forEach(file => {
-            console.log(`  - ${file}`);
-          });
+          if (contents.markdown) console.log(`  - ${contents.markdown}`);
+          if (contents.original) console.log(`  - ${contents.original}`);
+          if (contents.metadata) console.log(`  - ${contents.metadata}`);
+          if (contents.visualizationPdf) console.log(`  - ${contents.visualizationPdf}`);
+          if (contents.images && contents.images.length > 0) {
+            console.log(`  - images/ (${contents.images.length} files)`);
+          }
         }
         
         if (metadata) {

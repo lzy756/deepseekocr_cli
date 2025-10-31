@@ -159,7 +159,7 @@ export class OCRClient {
    * OCR PDF asynchronously (submit task)
    * @param {string} pdfPath - Path to PDF file
    * @param {object} options - OCR options
-   * @returns {Promise<string>} Task ID
+   * @returns {Promise<object>} Task response with task_id
    */
   async ocrPdfAsync(pdfPath, options = {}) {
     const form = new FormData();
@@ -183,7 +183,7 @@ export class OCRClient {
       onUploadProgress: options.onUploadProgress,
     });
 
-    return response.data.task_id;
+    return response.data;
   }
 
   /**
@@ -225,6 +225,7 @@ export class OCRClient {
 
     const startTime = Date.now();
     let delay = initialDelay;
+    let pollCount = 0;
 
     // eslint-disable-next-line no-constant-condition
     while (true) {
@@ -235,6 +236,7 @@ export class OCRClient {
 
       // Query status
       const status = await this.getTaskStatus(taskId);
+      pollCount++;
       
       // Call progress callback
       onProgress(status);
@@ -247,9 +249,17 @@ export class OCRClient {
         throw new Error(`Task failed: ${errorMsg}`);
       }
 
-      // Wait with exponential backoff
-      await new Promise((resolve) => setTimeout(resolve, delay));
-      delay = Math.min(delay * 2, maxDelay);
+      // Adaptive polling with smarter backoff strategy:
+      // - First 5 polls: use initialDelay (fast polling for quick tasks)
+      // - After 5 polls: gradually increase delay (slower polling for long tasks)
+      if (pollCount < 5) {
+        // Keep initial delay for first few polls
+        await new Promise((resolve) => setTimeout(resolve, initialDelay));
+      } else {
+        // Exponential backoff after initial fast polling
+        await new Promise((resolve) => setTimeout(resolve, delay));
+        delay = Math.min(delay * 1.5, maxDelay);  // Gentler increase: 1.5x instead of 2x
+      }
     }
   }
 }

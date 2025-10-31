@@ -250,7 +250,14 @@ async function handleTaskDownload(taskId, options) {
     }
     
     // Download result
-    const result = await client.downloadTaskResult(taskId, progressBar);
+    const result = await client.downloadTaskResult(taskId, {
+      onDownloadProgress: progressBar ? (event) => {
+        if (event.total) {
+          const percent = Math.round((event.loaded / event.total) * 100);
+          progressBar.update(percent);
+        }
+      } : undefined
+    });
     
     if (progressBar) {
       progressBar.stop();
@@ -261,7 +268,7 @@ async function handleTaskDownload(taskId, options) {
     const outputDir = options.outputPath ? resolve(options.outputPath).replace(/\.[^.]+$/, '') : resolve(`./${taskId}_result`);
     
     // Save result
-    writeFileSync(outputPath, result.data);
+    writeFileSync(outputPath, result);
     
     if (!jsonOutput) {
       printSuccess(`Result saved to: ${outputPath}`);
@@ -406,7 +413,7 @@ async function handleTaskWait(taskId, options) {
           const outputDir = options.outputPath ? resolve(options.outputPath).replace(/\.[^.]+$/, '') : resolve(`./${taskId}_result`);
           
           // Save result
-          writeFileSync(outputPath, result.data);
+          writeFileSync(outputPath, result);
           
           if (!jsonOutput) {
             printSuccess(`Result saved to: ${outputPath}`);

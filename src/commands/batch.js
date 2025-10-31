@@ -85,11 +85,11 @@ async function processSingleFile(client, filePath, fileType, requestData, output
     }
     
     // Handle result
-    if (Buffer.isBuffer(result.data)) {
+    if (Buffer.isBuffer(result)) {
       // Save ZIP file
       const zipPath = join(outputDir, `${fileNameWithoutExt}_result.zip`);
       const { writeFileSync } = await import('fs');
-      writeFileSync(zipPath, result.data);
+      writeFileSync(zipPath, result);
       
       // Extract ZIP if not disabled
       if (!options.noExtract) {
@@ -110,7 +110,7 @@ async function processSingleFile(client, filePath, fileType, requestData, output
       // Direct response - save as JSON
       const jsonPath = join(outputDir, `${fileNameWithoutExt}_result.json`);
       const { writeFileSync } = await import('fs');
-      writeFileSync(jsonPath, JSON.stringify(result.data, null, 2));
+      writeFileSync(jsonPath, JSON.stringify(result, null, 2));
       
       if (progressBar) {
         progressBar.update(fileIndex, { filename: fileName, status: '✓ Success' });

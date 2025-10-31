@@ -23,8 +23,9 @@ export const DEFAULTS = {
   MODE: MODES.DOCUMENT_MARKDOWN,
   RESOLUTION: RESOLUTIONS.GUNDAM,
   MAX_RETRIES: 3,
-  POLL_INTERVAL: 2000, // ms
-  MAX_POLL_INTERVAL: 30000, // ms
+  POLL_INTERVAL: 500, // ms - Fast initial polling for quick tasks
+  MAX_POLL_INTERVAL: 10000, // ms - Max 10s between polls (reduced from 30s)
+  POLL_TIMEOUT: 600000, // 10 minutes for async task polling
   TIMEOUT: 30000, // ms
   OUTPUT_DIR: './results',
   AUTO_EXTRACT: true,

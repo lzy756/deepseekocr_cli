@@ -122,10 +122,15 @@ async function handleImageOcr(imagePath, options, command) {
       progressBar = createProgressBar('Uploading and processing');
     }
     
+    // Prepare options with progress handler
+    const imageOptions = {
+      ...requestData,
+      onUploadProgress: progressBar ? uploadProgressHandler(progressBar) : undefined
+    };
+    
     const result = await client.ocrImage(
       absolutePath,
-      requestData,
-      progressBar ? uploadProgressHandler(progressBar) : undefined
+      imageOptions
     );
     
     if (progressBar) {
