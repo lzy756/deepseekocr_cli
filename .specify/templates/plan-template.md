@@ -31,7 +31,47 @@
 
 *GATE: Must pass before Phase 0 research. Re-check after Phase 1 design.*
 
-[Gates determined based on constitution file]
+### Principle I: CLI-First Design
+- [ ] Commands follow UNIX philosophy (composable, single purpose)
+- [ ] Sensible defaults provided for all required parameters
+- [ ] Both human-readable and JSON output formats supported
+- [ ] Progress feedback implemented for long-running operations
+- [ ] Help text (`--help`) comprehensive and clear
+
+### Principle II: API Client Abstraction
+- [ ] Client module independent of CLI framework
+- [ ] All HTTP communication centralized in client module
+- [ ] Client exposes async/await interface
+- [ ] Request validation occurs before API calls
+- [ ] Client is unit-testable with mocked responses
+
+### Principle III: Configuration Management
+- [ ] Config file support implemented (`~/.config/deepseek-ocr/config.yaml`)
+- [ ] Environment variable support implemented
+- [ ] Command-line flag overrides supported
+- [ ] Configuration precedence clearly documented
+- [ ] No API keys committed to version control (`.gitignore` configured)
+
+### Principle IV: Error Handling & User Feedback
+- [ ] API errors translated to user-friendly messages
+- [ ] Appropriate exit codes used (0=success, 1=error, 2=usage error)
+- [ ] Errors logged to stderr, results to stdout
+- [ ] Verbose/debug mode implemented (`--verbose` flag)
+- [ ] Network failures handled with retry logic
+
+### Principle V: Asynchronous Operations & Progress
+- [ ] Progress indicators shown for long operations
+- [ ] Task submission and polling supported
+- [ ] Exponential backoff for status polling implemented
+- [ ] Interruption handling (Ctrl+C) graceful
+- [ ] Temporary file cleanup on exit/error
+
+### Security & Quality
+- [ ] API keys never logged or included in error messages
+- [ ] Input validation prevents directory traversal and injection
+- [ ] ESLint and Prettier configured
+- [ ] Unit tests cover API client and core logic (target >80%)
+- [ ] README includes installation, configuration, usage examples
 
 ## Project Structure
 
@@ -49,50 +89,45 @@ specs/[###-feature]/
 
 ### Source Code (repository root)
 <!--
-  ACTION REQUIRED: Replace the placeholder tree below with the concrete layout
-  for this feature. Delete unused options and expand the chosen structure with
-  real paths (e.g., apps/admin, packages/something). The delivered plan must
-  not include Option labels.
+  ACTION REQUIRED: For the DeepSeek-OCR CLI project, use the structure below
+  as defined in the constitution. Adjust paths based on actual feature needs.
 -->
 
 ```text
-# [REMOVE IF UNUSED] Option 1: Single project (DEFAULT)
-src/
-├── models/
-├── services/
-├── cli/
-└── lib/
-
-tests/
-├── contract/
-├── integration/
-└── unit/
-
-# [REMOVE IF UNUSED] Option 2: Web application (when "frontend" + "backend" detected)
-backend/
+# Node.js CLI Project Structure (as per constitution)
+deepseek-ocr-cli/
 ├── src/
-│   ├── models/
-│   ├── services/
-│   └── api/
-└── tests/
-
-frontend/
-├── src/
-│   ├── components/
-│   ├── pages/
-│   └── services/
-└── tests/
-
-# [REMOVE IF UNUSED] Option 3: Mobile + API (when "iOS/Android" detected)
-api/
-└── [same as backend above]
-
-ios/ or android/
-└── [platform-specific structure: feature modules, UI flows, platform tests]
+│   ├── index.js                 # CLI entry point
+│   ├── commands/                # Command implementations
+│   │   ├── config.js            # config init/show/set
+│   │   ├── image.js             # image OCR
+│   │   ├── pdf.js               # PDF OCR
+│   │   ├── batch.js             # batch processing
+│   │   └── task.js              # task management
+│   ├── lib/
+│   │   ├── client.js            # API client (constitution principle II)
+│   │   ├── config.js            # Configuration manager (principle III)
+│   │   ├── progress.js          # Progress tracking (principle V)
+│   │   └── utils.js             # Utilities (retry, validation)
+│   └── constants.js             # Constants (defaults, enums)
+├── tests/
+│   ├── unit/                    # Unit tests (client, config, utils)
+│   ├── integration/             # Integration tests with mock API
+│   └── fixtures/                # Test data (sample images, PDFs)
+├── docs/                        # User documentation
+│   └── troubleshooting.md       # Common issues guide
+├── package.json
+├── package-lock.json
+├── README.md
+├── .eslintrc.json
+├── .prettierrc
+└── .gitignore                   # MUST exclude config files with keys
 ```
 
-**Structure Decision**: [Document the selected structure and reference the real
-directories captured above]
+**Structure Decision**: Single Node.js CLI project following constitution-mandated
+structure. API client abstraction in `src/lib/client.js` enables future reuse
+(e.g., web UI). Commands are modular for maintainability. Tests organized by type
+with clear separation of concerns.
 
 ## Complexity Tracking
 

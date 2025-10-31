@@ -12,6 +12,13 @@ description: "Task list template for feature implementation"
 
 **Organization**: Tasks are grouped by user story to enable independent implementation and testing of each story.
 
+**Constitution Alignment**: All tasks MUST align with the five core principles:
+- **Principle I**: CLI-First Design (commands, help text, output formats)
+- **Principle II**: API Client Abstraction (centralized HTTP client)
+- **Principle III**: Configuration Management (config file, env vars, CLI flags)
+- **Principle IV**: Error Handling & User Feedback (exit codes, error messages, verbose mode)
+- **Principle V**: Asynchronous Operations & Progress (progress bars, task polling, graceful interruption)
+
 ## Format: `[ID] [P?] [Story] Description`
 
 - **[P]**: Can run in parallel (different files, no dependencies)
