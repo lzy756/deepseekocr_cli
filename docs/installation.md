@@ -1,342 +1,367 @@
-# Installation Guide
+# Installation Guide (Windows & Linux)
 
-This guide covers all methods for installing DeepSeek-OCR CLI tool.
+本指南涵盖在 Windows 与 Linux 上安装与使用 DeepSeek-OCR CLI 的完整步骤与排错建议。
 
-## Prerequisites
+## 前置条件
 
-Before installing, ensure you have:
+请确认已具备：
 
-- **Node.js**: Version 18.0.0 or higher (LTS recommended)
-- **npm**: Comes bundled with Node.js
-- **Operating System**: Windows, macOS, or Linux
-- **DeepSeek-OCR API**: Access to a running DeepSeek-OCR API server
+- Node.js 18.0.0 或更高版本（推荐 LTS）
+- npm（随 Node.js 一并安装）
+- 可访问的 DeepSeek-OCR API 服务（Base URL 与 API Key）
 
-### Check Node.js Version
+### 检查 Node.js 版本
 
-```bash
-node --version
-# Should output v18.0.0 or higher
+Windows（PowerShell）：
+
+```powershell
+node -v
+# 应输出 v18.0.0 或更高
 ```
 
-If Node.js is not installed or outdated:
-- Download from [nodejs.org](https://nodejs.org/)
-- Use a version manager like [nvm](https://github.com/nvm-sh/nvm) (recommended)
+Linux（Bash）：
 
-## Installation Methods
+```bash
+node -v
+# 应输出 v18.0.0 或更高
+```
 
-### Method 1: Global Installation (Recommended)
+未安装或版本过低时：
+- 官方安装包：[https://nodejs.org/](https://nodejs.org/)
+- Linux 推荐使用 nvm 管理多版本 Node.js：[nvm](https://github.com/nvm-sh/nvm)
+- Windows 推荐使用 nvm-windows 管理多版本 Node.js：[nvm-windows](https://github.com/coreybutler/nvm-windows)
 
-Install globally to use `deepseek-ocr` command from anywhere:
+提示：
+- Windows 也可用包管理器安装 Node.js：`winget install OpenJS.NodeJS.LTS` 或 `choco install nodejs-lts`。
+- Linux 可用发行版包管理器（apt/dnf/yum/pacman 等）安装，但版本可能落后，建议使用 nvm。
+
+## 安装方式
+
+### 方式一：全局安装（推荐）
+
+全局安装后可在任何目录使用 `deepseek-ocr`：
+
+Windows（PowerShell）或 Linux（Bash）均通用：
 
 ```bash
 npm install -g deepseek-ocr-cli
 ```
 
-**Verify Installation:**
+验证：
 
 ```bash
 deepseek-ocr --version
 ```
 
-**Benefits:**
-- Command available system-wide
-- Easy to use from any directory
-- Automatic PATH configuration
-
-**Note:** On some systems, you may need to use `sudo`:
+说明：
+- Linux 若提示权限问题，可使用 `sudo`（或改用 nvm）：
 
 ```bash
 sudo npm install -g deepseek-ocr-cli
 ```
 
-### Method 2: Local Installation
+- Windows 通常无需管理员权限；若 Node.js 以系统范围安装，需在“以管理员身份运行”的 PowerShell 中执行。
 
-Install locally in your project:
+### 方式二：项目本地安装
 
 ```bash
-# Create a new directory
+# 新建项目目录
 mkdir my-ocr-project
 cd my-ocr-project
 
-# Initialize npm project
+# 初始化 npm
 npm init -y
 
-# Install locally
+# 安装到项目依赖
 npm install deepseek-ocr-cli
 ```
 
-**Run Commands:**
+运行：
 
 ```bash
-# Using npx
+# 使用 npx 调用
 npx deepseek-ocr --version
-
-# Or add to package.json scripts
 ```
 
-**Benefits:**
-- Project-specific version
-- No global namespace pollution
-- Easy version management per project
+特点：
+- 版本与项目绑定，互不影响
+- 便于在不同项目使用不同版本
 
-### Method 3: From Source
+### 方式三：从源码安装
 
-Install directly from GitHub repository:
+从 GitHub 仓库获取最新开发版本：
+
+Windows（PowerShell）：
+
+```powershell
+git clone https://github.com/lzy756/deepseekocr_cli.git
+cd deepseekocr_cli
+npm install
+npm link   # 将 deepseek-ocr 命令链接到全局
+```
+
+Linux（Bash）：
 
 ```bash
-# Clone repository
-git clone https://github.com/yourusername/deepseek-ocr-cli.git
-cd deepseek-ocr-cli
-
-# Install dependencies
+git clone https://github.com/lzy756/deepseekocr_cli.git
+cd deepseekocr_cli
 npm install
-
-# Link globally (makes command available)
-npm link
+npm link   # 将 deepseek-ocr 命令链接到全局
 ```
 
-**Verify Installation:**
+验证：
 
 ```bash
 deepseek-ocr --version
 ```
 
-**Benefits:**
-- Latest development version
-- Ability to contribute/modify
-- Full source code access
+### 方式四：直接从 GitHub 安装
 
-### Method 4: Direct from GitHub
-
-Install specific version/branch:
+安装主分支最新代码或指定版本/分支：
 
 ```bash
-# Install latest from main branch
-npm install -g github:yourusername/deepseek-ocr-cli
+# 主分支最新
+npm install -g github:lzy756/deepseekocr_cli
 
-# Install specific version
-npm install -g github:yourusername/deepseek-ocr-cli#v1.0.0
+# 指定 Tag（举例）
+npm install -g github:lzy756/deepseekocr_cli#v1.0.0
 
-# Install from specific branch
-npm install -g github:yourusername/deepseek-ocr-cli#develop
+# 指定分支（举例）
+npm install -g github:lzy756/deepseekocr_cli#develop
 ```
 
-## Platform-Specific Notes
+## 平台要点
 
 ### Windows
 
-**PowerShell Execution Policy:**
-
-If you encounter script execution errors:
+PowerShell 执行策略（遇到脚本执行受限时）：
 
 ```powershell
 Set-ExecutionPolicy -Scope CurrentUser -ExecutionPolicy RemoteSigned
 ```
 
-**PATH Configuration:**
+PATH 配置：全局 npm 可执行文件默认位于：
 
-Global npm packages are installed to:
 ```
 %APPDATA%\npm
 ```
 
-Ensure this is in your PATH environment variable.
+检查是否在 PATH 中：
 
-### macOS/Linux
+```powershell
+$env:Path -split ';' | Where-Object { $_ -match 'npm' }
+```
 
-**Permission Issues:**
+### Linux
 
-If global installation fails:
-
-1. **Option 1: Use sudo** (quick fix)
-   ```bash
-   sudo npm install -g deepseek-ocr-cli
-   ```
-
-2. **Option 2: Change npm's default directory** (recommended)
-   ```bash
-   mkdir ~/.npm-global
-   npm config set prefix '~/.npm-global'
-   echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc
-   source ~/.bashrc
-   ```
-
-3. **Option 3: Use nvm** (best practice)
-   ```bash
-   curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.0/install.sh | bash
-   nvm install --lts
-   npm install -g deepseek-ocr-cli
-   ```
-
-## Post-Installation Setup
-
-### 1. Verify Installation
+权限问题：
+1) 快速方案（不推荐长期使用）：
 
 ```bash
-# Check version
-deepseek-ocr --version
+sudo npm install -g deepseek-ocr-cli
+```
 
-# Check help
+2) 推荐方案：调整 npm 前缀到用户目录：
+
+```bash
+mkdir -p ~/.npm-global
+npm config set prefix '~/.npm-global'
+echo 'export PATH=~/.npm-global/bin:$PATH' >> ~/.bashrc
+source ~/.bashrc
+```
+
+3) 最佳实践：使用 nvm（隔离不同 Node 版本与全局包）：
+
+```bash
+curl -o- https://raw.githubusercontent.com/nvm-sh/nvm/v0.39.7/install.sh | bash
+source ~/.bashrc
+nvm install --lts
+npm install -g deepseek-ocr-cli
+```
+
+## 安装后配置
+
+### 1) 验证安装
+
+```bash
+deepseek-ocr --version
 deepseek-ocr --help
 ```
 
-### 2. Configure API Credentials
+### 2) 配置 API 凭据
 
 ```bash
-# Run interactive configuration
 deepseek-ocr config init
 ```
 
-You'll be prompted for:
-- **API Base URL**: Your DeepSeek-OCR API endpoint
-- **API Key**: Your authentication key
+你将被询问：
+- API Base URL：DeepSeek-OCR API 地址
+- API Key：访问令牌
 
-### 3. Test Connection
+### 3) 测试连接
 
 ```bash
-# Check service health
 deepseek-ocr health check
-
-# Get model information
 deepseek-ocr health info
 ```
 
-### 4. Prepare Test Files
+### 4) 准备测试文件
 
-Create a test directory with sample files:
+创建测试目录并准备示例图片：
 
-```bash
+Windows（PowerShell，建议使用 curl.exe 或 Invoke-WebRequest）：
+
+```powershell
 mkdir ocr-test
 cd ocr-test
 
-# Download sample image (or use your own)
-curl -o test.jpg https://example.com/sample-image.jpg
+# 使用 curl.exe（注意 .exe）
+curl.exe -L -o test.jpg https://example.com/sample-image.jpg
 
-# Test OCR
+# 或使用 Invoke-WebRequest
+# Invoke-WebRequest -Uri https://example.com/sample-image.jpg -OutFile test.jpg
+
 deepseek-ocr image test.jpg
 ```
 
-## Updating
+Linux（Bash）：
 
-### Global Installation
+```bash
+mkdir -p ocr-test
+cd ocr-test
+curl -L -o test.jpg https://example.com/sample-image.jpg
+deepseek-ocr image test.jpg
+```
+
+## 更新
+
+全局安装：
 
 ```bash
 npm update -g deepseek-ocr-cli
 ```
 
-### Local Installation
+项目本地安装：
 
 ```bash
 npm update deepseek-ocr-cli
 ```
 
-### From Source
+源码安装：
 
 ```bash
-cd deepseek-ocr-cli
-git pull origin main
+cd deepseekocr_cli
+git pull origin master
 npm install
 ```
 
-## Uninstallation
+## 卸载与清理
 
-### Global Installation
+全局卸载：
 
 ```bash
 npm uninstall -g deepseek-ocr-cli
 ```
 
-### Local Installation
+项目卸载：
 
 ```bash
 npm uninstall deepseek-ocr-cli
 ```
 
-### From Source
+源码卸载（取消链接，并按需删除仓库）：
+
+Windows（PowerShell）：
+
+```powershell
+npm unlink
+cd ..
+Remove-Item -Recurse -Force .\deepseekocr_cli
+```
+
+Linux（Bash）：
 
 ```bash
 npm unlink
-# Optionally delete cloned directory
-rm -rf deepseek-ocr-cli
+cd ..
+rm -rf ./deepseekocr_cli
 ```
 
-### Clean Configuration
+清理配置（本工具使用 Conf，项目名为 `deepseek-ocr`）：
 
-To remove all configuration and history:
+Linux：
 
-**Linux/macOS:**
 ```bash
 rm -rf ~/.config/deepseek-ocr
 ```
 
-**Windows:**
+Windows（PowerShell）：
+
 ```powershell
 Remove-Item -Recurse -Force $env:APPDATA\deepseek-ocr
 ```
 
-## Troubleshooting Installation
+## 安装故障排查
 
-### "command not found" Error
+### “command not found”/“不是内部或外部命令”
 
-**Solution 1: Check PATH**
+1) 检查 PATH：
 
-```bash
-# macOS/Linux
-echo $PATH | grep npm
+Windows（PowerShell）：
 
-# Windows
-echo %PATH% | findstr npm
+```powershell
+$env:Path -split ';' | Where-Object { $_ -match 'npm' }
 ```
 
-**Solution 2: Reinstall Globally**
+Linux（Bash）：
+
+```bash
+echo "$PATH" | tr ':' '\n' | grep npm
+```
+
+2) 重新全局安装：
 
 ```bash
 npm uninstall -g deepseek-ocr-cli
 npm install -g deepseek-ocr-cli
 ```
 
-**Solution 3: Use Full Path**
-
-Find where npm installs global packages:
+3) 使用完整路径：
 
 ```bash
 npm root -g
+# 进入上述目录的 ../bin，直接运行 deepseek-ocr 可执行文件
 ```
 
-Then use full path to executable.
+### 权限相关错误（EACCES/EPERM）
 
-### "Permission Denied" Error
+- Linux：优先使用 nvm 或将 npm 前缀改为用户目录（见上文“Linux”小节）。
+- Windows：在需要时以管理员身份打开 PowerShell 执行一次安装。
 
-See platform-specific notes above for solutions.
+### 网络/代理问题
 
-### "EACCES" Error
-
-Change npm's default directory or use nvm (see macOS/Linux section).
-
-### Network/Proxy Issues
-
-Configure npm proxy:
+设置 npm 代理：
 
 ```bash
 npm config set proxy http://proxy.company.com:8080
 npm config set https-proxy http://proxy.company.com:8080
 ```
 
-For corporate networks with SSL inspection:
+若公司网络做 SSL 检查：
 
 ```bash
 npm config set strict-ssl false
 ```
 
-### Version Conflicts
+### 版本冲突
 
-Check installed versions:
+查看已安装版本：
 
 ```bash
 npm list -g deepseek-ocr-cli
 ```
 
-Remove all versions and reinstall:
+清理缓存并重装：
 
 ```bash
 npm uninstall -g deepseek-ocr-cli
@@ -344,24 +369,22 @@ npm cache clean --force
 npm install -g deepseek-ocr-cli
 ```
 
-## Next Steps
+## 下一步
 
-After successful installation:
+1. 阅读 [Usage 使用指南](usage.md) 获取详细命令示例
+2. 查看 README 中的[配置选项](../README.md#configuration)
+3. 体验 [Quick Start 快速开始](../README.md#quick-start)
+4. 若遇问题，参考 [Troubleshooting 故障排查](troubleshooting.md)
 
-1. 📖 Read the [Usage Guide](usage.md) for detailed command examples
-2. 🔧 Review [Configuration Options](../README.md#configuration)
-3. 🚀 Try the [Quick Start Tutorial](../README.md#quick-start)
-4. 🐛 Check [Troubleshooting Guide](troubleshooting.md) if you encounter issues
+## 支持与反馈
 
-## Support
+若仍有安装问题：
 
-If you continue to experience installation issues:
-
-1. Check the [GitHub Issues](https://github.com/yourusername/deepseek-ocr-cli/issues)
-2. Create a new issue with:
-   - Your Node.js version (`node --version`)
-   - Your npm version (`npm --version`)
-   - Your operating system
-   - The complete error message
-   - Steps you've tried
+1. 查看 GitHub Issues：https://github.com/lzy756/deepseekocr_cli/issues
+2. 新建 Issue 并附上：
+   - Node.js 版本（`node -v`）
+   - npm 版本（`npm -v`）
+   - 操作系统版本与平台（Windows/Linux）
+   - 完整报错信息与日志
+   - 已尝试的步骤
 
