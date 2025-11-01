@@ -15,9 +15,9 @@ const schema = {
         format: 'uri',
         default: DEFAULTS.BASE_URL,
       },
-      apiKey: {
+      key: {
         type: 'string',
-        default: '',
+        default: DEFAULTS.API_KEY,
       },
     },
   },

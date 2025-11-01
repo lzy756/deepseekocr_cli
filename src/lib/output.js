@@ -95,12 +95,20 @@ export function printKeyValue(key, value, indent = 0) {
 /**
  * Print table from array of objects
  * @param {Array} data - Array of row objects
- * @param {Array} columns - Column definitions
+ * @param {Array} columns - Column definitions (optional, will be inferred from data if not provided)
  */
 export function printTable(data, columns) {
   if (!data || data.length === 0) {
     console.log(chalk.gray('  No data'));
     return;
+  }
+
+  // If columns not provided, infer from first row
+  if (!columns && data.length > 0) {
+    columns = Object.keys(data[0]).map(key => ({
+      key: key,
+      header: key
+    }));
   }
 
   // Calculate column widths

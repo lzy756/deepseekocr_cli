@@ -1,9 +1,11 @@
 import { Command } from 'commander';
 import { resolve, basename, extname, dirname, join } from 'path';
+import { statSync } from 'fs';
+import chalk from 'chalk';
 import { validateImageFile, validateMode, validateResolution, validateCustomPrompt } from '../lib/validator.js';
 import OCRClient from '../lib/client.js';
 import { getEffectiveConfig, validateConfig } from '../lib/config-precedence.js';
-import { printSuccess, printError, printInfo, printVerboseInfo, printVerboseSuccess, printKeyValue, printSection, printSummary } from '../lib/output.js';
+import { printSuccess, printError, printWarning, printInfo, printVerboseInfo, printVerboseSuccess, printKeyValue, printSection, printSummary } from '../lib/output.js';
 import { createProgressBar, uploadProgressHandler } from '../lib/progress.js';
 import { extractZip, ensureDir, readMetadataFromZip, parseZipContents } from '../lib/utils.js';
 import { MODES } from '../constants.js';
@@ -13,19 +15,23 @@ import { MODES } from '../constants.js';
  */
 async function handleImageOcr(imagePath, options, command) {
   const startTime = Date.now();
-  
+
   // Get global options from parent command (do this outside try-catch for error handling)
   const globalOpts = command.optsWithGlobals();
   const verbose = options.verbose || globalOpts.verbose;
   const outputFormat = options.output || globalOpts.output || 'text';
   const jsonOutput = outputFormat === 'json';
-  
+
+  let progressBar = null;  // Declare progress bar at function scope for cleanup
+  let config = null;  // Declare config at function scope for error reporting
+  let mode = null;  // Declare mode at function scope for error reporting
+
   try {
     // Resolve absolute path
     const absolutePath = resolve(imagePath);
-    
+
     // Get effective configuration
-    const config = getEffectiveConfig({
+    config = getEffectiveConfig({
       apiKey: options.apiKey || globalOpts.apiKey,
       baseUrl: options.baseUrl || globalOpts.baseUrl,
       mode: options.mode,
@@ -46,7 +52,7 @@ async function handleImageOcr(imagePath, options, command) {
     }
     
     // Validate mode and resolution
-    const mode = options.mode || config.defaults.mode;
+    mode = options.mode || config.defaults.mode;
     const resolution = options.resolution || config.defaults.resolution;
     
     if (verbose && !jsonOutput) {
@@ -77,10 +83,87 @@ async function handleImageOcr(imagePath, options, command) {
     if (verbose && !jsonOutput) {
       printVerboseInfo(`Connecting to API: ${config.api.baseUrl}`);
     }
-    
+
     const client = new OCRClient(config.api.baseUrl, config.api.key, {
       timeout: config.api.timeout,
-      verbose: verbose
+      verbose: verbose,
+      onRetryCallback: (retryCount, error, maxRetries) => {
+        try {
+          // Temporarily stop progress bar to show retry message cleanly
+          const hadProgressBar = !!progressBar;
+          if (progressBar) {
+            try {
+              progressBar.stop();
+              progressBar = null;
+            } catch (e) {
+              // Ignore errors
+            }
+          }
+
+          // Show retry message
+          console.log();  // Empty line before message
+          if (error.response && error.response.status >= 500) {
+            printWarning(`Server error (${error.response.status}), retrying ${retryCount}/${maxRetries}...`);
+
+            // Show detailed error in verbose mode
+            if (verbose) {
+              // Show request context
+              console.log(chalk.gray('  Request context:'));
+              console.log(chalk.gray(`    • File: ${basename(imagePath)}`));
+              const displayMode = mode || options.mode || '(unknown)';
+              const displayResolution = options.resolution || (config ? config.defaults.resolution : '(unknown)');
+              console.log(chalk.gray(`    • Mode: ${displayMode}`));
+              console.log(chalk.gray(`    • Resolution: ${displayResolution}`));
+
+              // Show error response
+              if (error.response.data) {
+                try {
+                  let errorData = error.response.data;
+
+                  // Convert Buffer to string if needed
+                  if (Buffer.isBuffer(errorData)) {
+                    errorData = errorData.toString('utf-8');
+                  }
+
+                  // Try to parse as JSON for pretty printing
+                  if (typeof errorData === 'string') {
+                    try {
+                      const parsed = JSON.parse(errorData);
+                      console.log(chalk.gray('  Server response:'));
+                      const formatted = JSON.stringify(parsed, null, 2)
+                        .split('\n')
+                        .map(line => `    ${line}`)
+                        .join('\n');
+                      console.log(chalk.gray(formatted));
+                    } catch (e) {
+                      // Not JSON, print as string (truncate if too long)
+                      const responsePreview = errorData.length > 200
+                        ? errorData.substring(0, 200) + '...'
+                        : errorData;
+                      console.log(chalk.gray(`  Server response: ${responsePreview}`));
+                    }
+                  } else {
+                    console.log(chalk.gray(`  Server response: ${JSON.stringify(errorData, null, 2)}`));
+                  }
+                } catch (e) {
+                  console.log(chalk.gray(`  Server response: [Unable to parse]`));
+                }
+              }
+            }
+          } else if (verbose) {
+            printInfo(`⚠ Retry ${retryCount}/${maxRetries}: ${error.message}`);
+          }
+          console.log();  // Empty line after message
+
+          // Recreate progress bar if it existed
+          if (hadProgressBar && !jsonOutput) {
+            progressBar = createProgressBar('Uploading and processing');
+          }
+        } catch (callbackError) {
+          // Ensure retry callback errors don't break the retry mechanism
+          console.error(chalk.red('Warning: Error in retry callback:'), callbackError.message);
+        }
+      }
     });
     
     if (verbose && !jsonOutput) {
@@ -117,7 +200,6 @@ async function handleImageOcr(imagePath, options, command) {
     }
     
     // Create progress bar for upload
-    let progressBar = null;
     if (!jsonOutput) {
       progressBar = createProgressBar('Uploading and processing');
     }
@@ -132,9 +214,11 @@ async function handleImageOcr(imagePath, options, command) {
       absolutePath,
       imageOptions
     );
-    
+
+    // Stop progress bar after successful request
     if (progressBar) {
       progressBar.stop();
+      progressBar = null;
     }
     
     if (verbose && !jsonOutput) {
@@ -281,6 +365,12 @@ async function handleImageOcr(imagePath, options, command) {
     }
     
   } catch (error) {
+    // Stop progress bar on error
+    if (progressBar) {
+      progressBar.stop();
+      progressBar = null;
+    }
+
     if (jsonOutput) {
       console.error(JSON.stringify({
         success: false,
@@ -289,11 +379,75 @@ async function handleImageOcr(imagePath, options, command) {
       }, null, 2));
     } else {
       printError(`Failed to process image: ${error.message}`);
-      
+
       // User-friendly error messages
       if (error.response) {
         const status = error.response.status;
         console.log();
+
+        // Verbose mode: show detailed error information first
+        if (verbose) {
+          printInfo('Error Details:');
+          printInfo(`  - HTTP Status: ${status} ${error.response.statusText || ''}`);
+          printInfo(`  - Request URL: ${error.config?.url || 'unknown'}`);
+          printInfo(`  - Request Method: ${error.config?.method?.toUpperCase() || 'unknown'}`);
+
+          // Show request parameters
+          if (error.config) {
+            printInfo('  - Request Parameters:');
+            const displayMode = mode || options.mode || '(unknown)';
+            const displayResolution = options.resolution || (config ? config.defaults.resolution : '(unknown)');
+            printInfo(`      • Mode: ${displayMode}`);
+            printInfo(`      • Resolution: ${displayResolution}`);
+            if (mode === MODES.CUSTOM && options.prompt) {
+              const promptPreview = options.prompt.length > 100
+                ? options.prompt.substring(0, 100) + '...'
+                : options.prompt;
+              printInfo(`      • Custom Prompt: ${promptPreview}`);
+            }
+            const fileSize = statSync(imagePath).size;
+            const fileSizeKB = (fileSize / 1024).toFixed(2);
+            printInfo(`      • File: ${basename(imagePath)} (${fileSizeKB} KB)`);
+          }
+
+          // Show response data
+          if (error.response.data) {
+            try {
+              let errorData = error.response.data;
+
+              // Convert Buffer to string if needed
+              if (Buffer.isBuffer(errorData)) {
+                errorData = errorData.toString('utf-8');
+              }
+
+              // Try to parse and format JSON
+              if (typeof errorData === 'string') {
+                try {
+                  const parsed = JSON.parse(errorData);
+                  printInfo('  - Response:');
+                  const formatted = JSON.stringify(parsed, null, 2)
+                    .split('\n')
+                    .map(line => `    ${line}`)
+                    .join('\n');
+                  console.log(chalk.gray(formatted));
+                } catch (e) {
+                  // Not JSON, print as plain text (truncate if too long)
+                  const responsePreview = errorData.length > 500
+                    ? errorData.substring(0, 500) + '...'
+                    : errorData;
+                  printInfo(`  - Response: ${responsePreview}`);
+                }
+              } else {
+                printInfo(`  - Response: ${JSON.stringify(errorData, null, 2)}`);
+              }
+            } catch (e) {
+              printInfo(`  - Response: [Unable to parse response data]`);
+            }
+          }
+          console.log();
+        }
+
+        // User-friendly suggestions
         if (status === 401 || status === 403) {
           printInfo('Authentication failed. Please check your API key:');
           printInfo('  - Run: deepseek-ocr config init');
@@ -307,12 +461,34 @@ async function handleImageOcr(imagePath, options, command) {
           printInfo(`  - Mode: ${options.mode || 'default'}`);
           printInfo(`  - Resolution: ${options.resolution || 'default'}`);
         } else if (status >= 500) {
-          printInfo('Server error. Please try again later.');
+          printInfo('Server error occurred. This may indicate:');
+          printInfo('  - The OCR service encountered an internal error');
+          printInfo('  - The image format may not be fully supported');
+          printInfo('  - The server may be overloaded');
+          printInfo('  - Please check server logs for more details');
+        }
+      } else if (verbose) {
+        // Network errors or other issues
+        console.log();
+        printInfo('Error Details:');
+        printInfo(`  - Error Type: ${error.code || 'Unknown'}`);
+        printInfo(`  - Message: ${error.message}`);
+        if (error.stack) {
+          console.log(chalk.gray(error.stack));
         }
       }
     }
-    
+
     process.exit(1);
+  } finally {
+    // Ensure progress bar is always cleaned up
+    if (progressBar) {
+      try {
+        progressBar.stop();
+      } catch (e) {
+        // Ignore errors during cleanup
+      }
+    }
   }
 }
 

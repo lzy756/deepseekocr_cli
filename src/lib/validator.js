@@ -158,15 +158,14 @@ export function validateWorkers(workers) {
 }
 
 /**
- * Validate custom prompt is provided when mode is custom
- * @param {string} mode - OCR mode
+ * Validate custom prompt is not empty
  * @param {string} prompt - Custom prompt
- * @throws {Error} If custom mode without prompt
+ * @throws {Error} If prompt is empty
  * @returns {boolean} True if valid
  */
-export function validateCustomPrompt(mode, prompt) {
-  if (mode === MODES.CUSTOM && !prompt) {
-    throw new Error('Custom prompt is required when mode is "custom"\n  Use --prompt "your prompt here"');
+export function validateCustomPrompt(prompt) {
+  if (!prompt || prompt.trim() === '') {
+    throw new Error('Custom prompt cannot be empty');
   }
   return true;
 }

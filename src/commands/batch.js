@@ -256,18 +256,20 @@ async function handleBatchOcr(directoryPath, options) {
     }
     
     // Validate all files and determine types
-    const fileTypes = [];
+    const validFiles = [];
+    const validFileTypes = [];
     const invalidFiles = [];
-    
+
     for (const file of files) {
       try {
         const type = validateFile(file);
-        fileTypes.push(type);
+        validFiles.push(file);
+        validFileTypes.push(type);
       } catch (error) {
         invalidFiles.push({ file: basename(file), error: error.message });
       }
     }
-    
+
     if (invalidFiles.length > 0 && !options.json) {
       printInfo(`Skipping ${invalidFiles.length} invalid file(s):`);
       invalidFiles.forEach(({ file, error }) => {
@@ -275,10 +277,7 @@ async function handleBatchOcr(directoryPath, options) {
       });
       console.log();
     }
-    
-    // Remove invalid files
-    const validFiles = files.filter((_, idx) => idx < fileTypes.length);
-    
+
     if (validFiles.length === 0) {
       throw new Error('No valid files to process');
     }
@@ -317,7 +316,7 @@ async function handleBatchOcr(directoryPath, options) {
     const results = await processInChunks(
       client,
       validFiles,
-      fileTypes,
+      validFileTypes,
       requestData,
       outputDir,
       options,

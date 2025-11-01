@@ -1,12 +1,12 @@
 import { Command } from 'commander';
 import { resolve, join, basename } from 'path';
-import { readFileSync, writeFileSync, existsSync } from 'fs';
+import { readFileSync, writeFileSync, existsSync, mkdirSync } from 'fs';
 import { homedir } from 'os';
 import OCRClient from '../lib/client.js';
 import { getEffectiveConfig, validateConfig } from '../lib/config-precedence.js';
 import { printSuccess, printError, printInfo, printKeyValue, printSection, printSummary, printTable } from '../lib/output.js';
 import { createProgressBar } from '../lib/progress.js';
-import { extractZip, ensureDir } from '../lib/utils.js';
+import { extractZip } from '../lib/utils.js';
 
 /**
  * Get history file path
@@ -45,12 +45,12 @@ function saveHistory(history) {
   const configDir = process.platform === 'win32'
     ? join(process.env.APPDATA || join(homedir(), 'AppData', 'Roaming'), 'deepseek-ocr')
     : join(homedir(), '.config', 'deepseek-ocr');
-  
-  // Ensure directory exists
+
+  // Ensure directory exists using sync method
   if (!existsSync(configDir)) {
-    ensureDir(configDir);
+    mkdirSync(configDir, { recursive: true });
   }
-  
+
   writeFileSync(historyPath, JSON.stringify(history, null, 2), 'utf-8');
 }
 
@@ -376,12 +376,21 @@ async function handleTaskWait(taskId, options) {
     }
     
     // Poll for completion with exponential backoff
+    const startTime = Date.now();
+    const maxWaitTime = 3600000; // 1 hour timeout
     let delay = 2000; // Start with 2 seconds
     const maxDelay = 30000; // Max 30 seconds
     let completed = false;
-    
+
     while (!completed) {
-      
+      // Check timeout
+      if (Date.now() - startTime > maxWaitTime) {
+        if (progressBar) {
+          progressBar.stop();
+        }
+        throw new Error(`Task wait timeout after ${maxWaitTime / 1000}s. Task may still be running on server. Task ID: ${taskId}`);
+      }
+
       try {
         const status = await client.getTaskStatus(taskId);
         

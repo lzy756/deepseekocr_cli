@@ -18,30 +18,31 @@ export function createProgressBar(label, total = 100) {
     barCompleteChar: '\u2588',
     barIncompleteChar: '\u2591',
     hideCursor: true,
-    clearOnComplete: false,
+    clearOnComplete: true,  // Auto-clear on completion
     stopOnComplete: true,
+    autopadding: true,
   });
 
   bar.start(total, 0);
+
+  // Add cleanup handlers for process termination
+  const cleanup = () => {
+    try {
+      bar.stop();
+    } catch (e) {
+      // Ignore errors during cleanup
+    }
+  };
+
+  process.on('exit', cleanup);
+  process.on('SIGINT', cleanup);
+  process.on('SIGTERM', cleanup);
+
   return bar;
 }
 
 /**
- * Create multi-bar container
- * @returns {object} Multi-bar instance
- */
-export function createMultiBar() {
-  return new cliProgress.MultiBar({
-    format: `{filename} ${chalk.cyan('{bar}')} {percentage}%`,
-    barCompleteChar: '\u2588',
-    barIncompleteChar: '\u2591',
-    hideCursor: true,
-    clearOnComplete: false,
-  });
-}
-
-/**
- * Create multi-progress bar (alias for createMultiBar)
+ * Create multi-progress bar
  * @returns {object} Multi-bar instance
  */
 export function createMultiProgressBar() {
@@ -53,6 +54,9 @@ export function createMultiProgressBar() {
     clearOnComplete: false,
   });
 }
+
+// Alias for backward compatibility
+export const createMultiBar = createMultiProgressBar;
 
 /**
  * Create upload progress handler

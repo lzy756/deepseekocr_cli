@@ -32,6 +32,7 @@ export const DEFAULTS = {
   SHOW_PROGRESS: true,
   WORKERS: 3,
   BASE_URL: 'http://localhost:8000',
+  API_KEY: '',  // Default empty API key
   DPI: 144,
   MAX_PAGES: 50,
 };
