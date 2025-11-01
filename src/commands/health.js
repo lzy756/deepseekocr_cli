@@ -6,25 +6,27 @@ import { printSuccess, printError, printInfo, printKeyValue, printSection, print
 /**
  * Handle health check command
  */
-async function handleHealthCheck(options) {
+async function handleHealthCheck(options, command) {
+  const globalOpts = command?.optsWithGlobals() || {};
+
   try {
     // Get effective configuration
     const config = getEffectiveConfig({
-      apiKey: options.apiKey || options.parent?.optsWithGlobals()?.apiKey,
-      baseUrl: options.baseUrl || options.parent?.optsWithGlobals()?.baseUrl
+      apiKey: options.apiKey || globalOpts.apiKey,
+      baseUrl: options.baseUrl || globalOpts.baseUrl
     });
-    
+
     // Validate configuration
     validateConfig(config);
-    
+
     // Initialize API client
     const client = new OCRClient(config.api.baseUrl, config.api.key, {
       timeout: config.api.timeout
     });
-    
-    const outputFormat = options.output || options.parent?.optsWithGlobals()?.output || 'text';
+
+    const outputFormat = options.output || globalOpts.output || 'text';
     const jsonOutput = outputFormat === 'json';
-    const verbose = options.verbose || options.parent?.optsWithGlobals()?.verbose;
+    const verbose = options.verbose || globalOpts.verbose;
     
     if (!jsonOutput) {
       printSection('Service Health Check');
@@ -82,11 +84,11 @@ async function handleHealthCheck(options) {
         printError('Service is not healthy');
       }
     }
-    
+
   } catch (error) {
-    const outputFormat = options.output || options.parent?.optsWithGlobals()?.output || 'text';
+    const outputFormat = options.output || globalOpts.output || 'text';
     const jsonOutput = outputFormat === 'json';
-    
+
     if (jsonOutput) {
       console.error(JSON.stringify({
         success: false,
@@ -124,25 +126,27 @@ async function handleHealthCheck(options) {
 /**
  * Handle model info command
  */
-async function handleModelInfo(options) {
+async function handleModelInfo(options, command) {
+  const globalOpts = command?.optsWithGlobals() || {};
+
   try {
     // Get effective configuration
     const config = getEffectiveConfig({
-      apiKey: options.apiKey || options.parent?.optsWithGlobals()?.apiKey,
-      baseUrl: options.baseUrl || options.parent?.optsWithGlobals()?.baseUrl
+      apiKey: options.apiKey || globalOpts.apiKey,
+      baseUrl: options.baseUrl || globalOpts.baseUrl
     });
-    
+
     // Validate configuration
     validateConfig(config);
-    
+
     // Initialize API client
     const client = new OCRClient(config.api.baseUrl, config.api.key, {
       timeout: config.api.timeout
     });
-    
-    const outputFormat = options.output || options.parent?.optsWithGlobals()?.output || 'text';
+
+    const outputFormat = options.output || globalOpts.output || 'text';
     const jsonOutput = outputFormat === 'json';
-    const verbose = options.verbose || options.parent?.optsWithGlobals()?.verbose;
+    const verbose = options.verbose || globalOpts.verbose;
     
     if (!jsonOutput) {
       printSection('Model Information');
@@ -190,11 +194,11 @@ async function handleModelInfo(options) {
         printKeyValue('  Base URL', config.api.baseUrl);
       }
     }
-    
+
   } catch (error) {
-    const outputFormat = options.output || options.parent?.optsWithGlobals()?.output || 'text';
+    const outputFormat = options.output || globalOpts.output || 'text';
     const jsonOutput = outputFormat === 'json';
-    
+
     if (jsonOutput) {
       console.error(JSON.stringify({
         success: false,

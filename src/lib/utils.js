@@ -27,21 +27,44 @@ export async function extractZip(zipPath, outputDir) {
   // Try using adm-zip package if available
   try {
     const AdmZip = await import('adm-zip').then(m => m.default).catch(() => null);
-    
+
     if (AdmZip) {
       const zip = new AdmZip(zipPath);
+      const entries = zip.getEntries();
+
+      // Validate all entries before extraction to prevent path traversal
+      const resolvedOutputDir = path.resolve(outputDir);
+      for (const entry of entries) {
+        const entryPath = path.join(resolvedOutputDir, entry.entryName);
+        const resolvedEntryPath = path.resolve(entryPath);
+
+        // Check if the resolved path is within the output directory
+        if (!resolvedEntryPath.startsWith(resolvedOutputDir + path.sep) && resolvedEntryPath !== resolvedOutputDir) {
+          throw new Error(`Unsafe ZIP entry detected: ${entry.entryName}. Path traversal attempt blocked.`);
+        }
+      }
+
+      // Safe to extract
       zip.extractAllTo(outputDir, true);
       return outputDir;
     }
-    
+
     // If AdmZip not available, fallback to command-line
     throw new Error('adm-zip not available');
   } catch (error) {
     // Fallback to command-line unzip
     if (process.platform === 'win32') {
-      await execAsync(`powershell -command "Expand-Archive -Path '${zipPath}' -DestinationPath '${outputDir}' -Force"`);
+      try {
+        await execAsync(`powershell -command "Expand-Archive -Path '${zipPath}' -DestinationPath '${outputDir}' -Force"`);
+      } catch (psError) {
+        throw new Error(`Failed to extract ZIP file: ${psError.message}. Please extract manually or install adm-zip package.`);
+      }
     } else {
-      await execAsync(`unzip -o "${zipPath}" -d "${outputDir}"`);
+      try {
+        await execAsync(`unzip -o "${zipPath}" -d "${outputDir}"`);
+      } catch (unzipError) {
+        throw new Error(`Failed to extract ZIP file: ${unzipError.message}. Please install unzip or extract manually.`);
+      }
     }
     return outputDir;
   }

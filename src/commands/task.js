@@ -7,6 +7,7 @@ import { getEffectiveConfig, validateConfig } from '../lib/config-precedence.js'
 import { printSuccess, printError, printInfo, printKeyValue, printSection, printSummary, printTable } from '../lib/output.js';
 import { createProgressBar } from '../lib/progress.js';
 import { extractZip } from '../lib/utils.js';
+import { TASK_RETENTION_DAYS, INITIAL_POLL_DELAY, MAX_POLL_DELAY, TASK_MAX_WAIT_TIME } from '../constants.js';
 
 /**
  * Get history file path
@@ -39,6 +40,9 @@ function loadHistory() {
 
 /**
  * Save task history
+ * Note: Uses synchronous file operations for simplicity in CLI context.
+ * For a CLI tool, this is acceptable as config files are small and operations
+ * happen infrequently (only when tasks are created/updated).
  */
 function saveHistory(history) {
   const historyPath = getHistoryPath();
@@ -98,17 +102,18 @@ function updateTaskStatus(taskId, status, error = null) {
 }
 
 /**
- * Prune old tasks (older than 7 days)
+ * Prune old tasks (older than TASK_RETENTION_DAYS)
  */
 function pruneOldTasks() {
   const history = loadHistory();
-  const sevenDaysAgo = Date.now() - (7 * 24 * 60 * 60 * 1000);
-  
+  const retentionMs = TASK_RETENTION_DAYS * 24 * 60 * 60 * 1000;
+  const cutoffTime = Date.now() - retentionMs;
+
   const filtered = history.filter(h => {
     const submittedDate = new Date(h.submitted_at).getTime();
-    return submittedDate > sevenDaysAgo;
+    return submittedDate > cutoffTime;
   });
-  
+
   if (filtered.length < history.length) {
     saveHistory(filtered);
   }
@@ -377,9 +382,9 @@ async function handleTaskWait(taskId, options) {
     
     // Poll for completion with exponential backoff
     const startTime = Date.now();
-    const maxWaitTime = 3600000; // 1 hour timeout
-    let delay = 2000; // Start with 2 seconds
-    const maxDelay = 30000; // Max 30 seconds
+    const maxWaitTime = TASK_MAX_WAIT_TIME;
+    let delay = INITIAL_POLL_DELAY;
+    const maxDelay = MAX_POLL_DELAY;
     let completed = false;
 
     while (!completed) {
@@ -519,7 +524,7 @@ function handleTaskList(options) {
         }, null, 2));
       } else {
         printInfo('No tasks found in history.');
-        printInfo('Task history shows tasks from the last 7 days.');
+        printInfo(`Task history shows tasks from the last ${TASK_RETENTION_DAYS} days.`);
       }
       return;
     }
@@ -531,7 +536,7 @@ function handleTaskList(options) {
       }, null, 2));
     } else {
       printSection('Task History');
-      printInfo(`Showing ${history.length} task(s) from the last 7 days`);
+      printInfo(`Showing ${history.length} task(s) from the last ${TASK_RETENTION_DAYS} days`);
       console.log();
       
       const tableData = history.map(task => ({

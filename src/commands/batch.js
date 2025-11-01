@@ -137,6 +137,10 @@ async function processSingleFile(client, filePath, fileType, requestData, output
 
 /**
  * Process files in chunks (concurrent pool)
+ * Note: Uses simple chunk-based concurrency control. For more advanced use cases,
+ * consider using a library like p-queue for dynamic work pool management.
+ * The current implementation is sufficient for CLI batch processing where the
+ * bottleneck is API calls, not task scheduling.
  */
 async function processInChunks(client, files, fileTypes, requestData, outputDir, options, workers) {
   const results = [];

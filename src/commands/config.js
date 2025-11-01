@@ -153,6 +153,48 @@ function handleConfigSet(key, value, options = {}) {
       process.exit(1);
     }
 
+    // Validate key format (must use dot notation)
+    if (!/^[a-z]+\.[a-zA-Z]+$/.test(key)) {
+      printError('Invalid key format. Use dot notation (e.g., api.key, defaults.mode)');
+      printInfo('Valid prefixes: api, defaults');
+      process.exit(1);
+    }
+
+    // Validate specific keys
+    if (key === 'api.timeout') {
+      const timeout = parseInt(value, 10);
+      if (isNaN(timeout) || timeout < 1000 || timeout > 600000) {
+        printError('Timeout must be between 1000 and 600000 ms');
+        process.exit(1);
+      }
+    }
+
+    if (key === 'api.baseUrl') {
+      // Basic URL validation
+      try {
+        new URL(value);
+      } catch (e) {
+        printError('Invalid URL format for baseUrl');
+        process.exit(1);
+      }
+    }
+
+    if (key === 'defaults.dpi') {
+      const dpi = parseInt(value, 10);
+      if (isNaN(dpi) || dpi < 72 || dpi > 300) {
+        printError('DPI must be between 72 and 300');
+        process.exit(1);
+      }
+    }
+
+    if (key === 'defaults.maxPages') {
+      const maxPages = parseInt(value, 10);
+      if (isNaN(maxPages) || maxPages < 1 || maxPages > 100) {
+        printError('Max pages must be between 1 and 100');
+        process.exit(1);
+      }
+    }
+
     // Set the value
     configManager.set(key, value);
 

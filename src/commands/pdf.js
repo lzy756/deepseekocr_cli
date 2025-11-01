@@ -12,14 +12,20 @@ import { addTaskToHistory } from './task.js';
 // PDF page threshold for auto-detection (sync vs async)
 const AUTO_ASYNC_THRESHOLD = 10;
 
-// Ctrl+C flag
+// Ctrl+C flag and handler reference
 let ctrlCPressed = false;
+let sigintHandler = null;
 
 /**
  * Handle Ctrl+C gracefully
  */
 function setupCtrlCHandler(taskId) {
-  process.on('SIGINT', () => {
+  // Remove old handler if exists
+  if (sigintHandler) {
+    process.removeListener('SIGINT', sigintHandler);
+  }
+
+  sigintHandler = () => {
     if (!ctrlCPressed) {
       ctrlCPressed = true;
       console.log();
@@ -31,34 +37,37 @@ function setupCtrlCHandler(taskId) {
       printInfo(`  deepseek-ocr task download ${taskId}`);
       process.exit(0);
     }
-  });
+  };
+
+  process.once('SIGINT', sigintHandler);
 }
 
 /**
  * Handle PDF OCR command
  */
-async function handlePdfOcr(pdfPath, options) {
+async function handlePdfOcr(pdfPath, options, command) {
   const startTime = Date.now();
-  
+  const globalOpts = command?.optsWithGlobals() || {};
+
   try {
     // Resolve absolute path
     const absolutePath = resolve(pdfPath);
-    
+
     // Get effective configuration
     const config = getEffectiveConfig({
-      apiKey: options.apiKey || options.parent?.optsWithGlobals()?.apiKey,
-      baseUrl: options.baseUrl || options.parent?.optsWithGlobals()?.baseUrl,
+      apiKey: options.apiKey || globalOpts.apiKey,
+      baseUrl: options.baseUrl || globalOpts.baseUrl,
       mode: options.mode,
       resolution: options.resolution,
       dpi: options.dpi,
       maxPages: options.maxPages
     });
-    
+
     // Validate configuration
     validateConfig(config);
-    
+
     // Validate PDF file
-    if (options.verbose || options.parent?.optsWithGlobals()?.verbose) {
+    if (options.verbose || globalOpts.verbose) {
       printInfo(`Validating PDF file: ${absolutePath}`);
     }
     validatePdfFile(absolutePath);
@@ -100,7 +109,7 @@ async function handlePdfOcr(pdfPath, options) {
     }
     
     // Determine output format
-    const outputFormat = options.output || options.parent?.optsWithGlobals()?.output || 'text';
+    const outputFormat = options.output || globalOpts.output || 'text';
     const jsonOutput = outputFormat === 'json';
     
     // Determine sync vs async
@@ -108,18 +117,18 @@ async function handlePdfOcr(pdfPath, options) {
     
     if (options.sync) {
       useAsync = false;
-      if (!jsonOutput && (options.verbose || options.parent?.optsWithGlobals()?.verbose)) {
+      if (!jsonOutput && (options.verbose || globalOpts.verbose)) {
         printInfo('Forcing synchronous processing (--sync flag)');
       }
     } else if (options.async) {
       useAsync = true;
-      if (!jsonOutput && (options.verbose || options.parent?.optsWithGlobals()?.verbose)) {
+      if (!jsonOutput && (options.verbose || globalOpts.verbose)) {
         printInfo('Forcing asynchronous processing (--async flag)');
       }
     } else {
       // Auto-detect based on max_pages
       useAsync = maxPages > AUTO_ASYNC_THRESHOLD;
-      if (!jsonOutput && (options.verbose || options.parent?.optsWithGlobals()?.verbose)) {
+      if (!jsonOutput && (options.verbose || globalOpts.verbose)) {
         printInfo(`Auto-detected ${useAsync ? 'async' : 'sync'} mode (max_pages=${maxPages}, threshold=${AUTO_ASYNC_THRESHOLD})`);
       }
     }
@@ -372,7 +381,7 @@ async function handlePdfOcr(pdfPath, options) {
     }
     
   } catch (error) {
-    const outputFormat = options.output || options.parent?.optsWithGlobals()?.output || 'text';
+    const outputFormat = options.output || globalOpts.output || 'text';
     const jsonOutput = outputFormat === 'json';
     
     if (jsonOutput) {
